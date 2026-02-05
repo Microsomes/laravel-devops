@@ -64,14 +64,27 @@ return [
     | Database Configuration
     |--------------------------------------------------------------------------
     |
-    | Database settings for the MariaDB container.
+    | Database credentials used by containers.
     |
     */
     'database' => [
-        'image' => env('DOCKER_DB_IMAGE', 'mariadb:latest'),
         'name' => env('DOCKER_DB_NAME', 'laravel'),
         'user' => env('DOCKER_DB_USER', 'root'),
         'password' => env('DOCKER_DB_PASSWORD', 'password'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Database Images
+    |--------------------------------------------------------------------------
+    |
+    | Docker images for each supported database driver.
+    |
+    */
+    'database_images' => [
+        'mariadb' => 'mariadb:latest',
+        'mysql' => 'mysql:8',
+        'postgresql' => 'postgres:16-alpine',
     ],
 
     /*
@@ -105,20 +118,52 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Services to Include
+    | Development Services
     |--------------------------------------------------------------------------
     |
-    | Toggle which services to include in the generated compose files.
+    | Services to include in the development docker-compose.yml.
+    | These are defaults that can be overridden via interactive prompts.
     |
     */
     'services' => [
         'backend' => true,
         'frontend' => true,
-        'node' => true,           // Dev only: Vite dev server
-        'database' => true,
+        'node' => true,
+        'database' => [
+            'enabled' => true,
+            'driver' => 'mariadb', // mariadb | mysql | postgresql | sqlite | none
+        ],
         'redis' => true,
-        'mailhog' => true,        // Dev only
-        'horizon' => true,        // Queue worker
-        'scheduler' => true,      // Task scheduler
+        'horizon' => true,
+        'scheduler' => true,
+        'mailhog' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Production Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Settings specific to production environment generation.
+    |
+    */
+    'production' => [
+        'database' => [
+            'enabled' => true,      // false = external DB (no container)
+            'driver' => 'mariadb',  // mariadb | mysql | postgresql | none
+        ],
+        'redis' => true,
+        'horizon' => true,
+        'scheduler' => true,
+        'migrate' => true,
+        'deploy_jobs' => [
+            // One-off commands that run once on deploy, then exit
+            // Example: 'storage:link', 'db:seed --force'
+        ],
+        'deploy_services' => [
+            // Persistent services that keep running
+            // Example: 'queue:work --queue=emails'
+        ],
+        'env_in_image' => true,     // Copy .env.production into Docker image
     ],
 ];
