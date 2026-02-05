@@ -57,7 +57,12 @@ class DockerInitCommand extends Command
         $this->line('Next steps:');
         $this->line('  1. Review generated files in .docker/ directory');
         $this->line('  2. Run: docker compose up -d');
-        $this->line('  3. For production, build images and push to registry');
+        $this->newLine();
+        $this->line('For production:');
+        $this->line('  1. Configure .docker/prod/.env.production');
+        $this->line('  2. Build images: cd .docker/build && docker compose build');
+        $this->line('  3. Push to registry: docker compose push');
+        $this->line('  4. See .docker/build/README.md for more details');
 
         return Command::SUCCESS;
     }
@@ -238,6 +243,7 @@ class DockerInitCommand extends Command
         // Create directories
         $this->ensureDirectoryExists('.docker/prod/backend');
         $this->ensureDirectoryExists('.docker/prod/frontend/conf.d');
+        $this->ensureDirectoryExists('.docker/build');
 
         // Generate Dockerfiles with correct placeholders
         $this->generateFile('prod/backend/Dockerfile', '.docker/prod/backend/Dockerfile', 'prod');
@@ -250,7 +256,12 @@ class DockerInitCommand extends Command
         // Generate .env.production template
         $this->generateProdEnv();
 
+        // Generate build compose and README
+        $this->generateBuildCompose();
+        $this->generateBuildReadme();
+
         $this->info('  ✓ Production environment');
+        $this->info('  ✓ Build configuration (.docker/build/)');
     }
 
     protected function generateDevCompose(): void
@@ -294,6 +305,36 @@ class DockerInitCommand extends Command
 
         $generator = new EnvGenerator($this->config, $this->selections);
         $content = $generator->generateProdEnvTemplate();
+
+        $this->files->put($destinationPath, $content);
+    }
+
+    protected function generateBuildCompose(): void
+    {
+        $destinationPath = base_path('.docker/build/docker-compose.yml');
+
+        if ($this->files->exists($destinationPath) && !$this->option('force')) {
+            $this->warn("  ⚠ Skipped .docker/build/docker-compose.yml (already exists, use --force to overwrite)");
+            return;
+        }
+
+        $builder = new ComposeBuilder($this->config, $this->selections);
+        $content = $builder->buildBuildCompose();
+
+        $this->files->put($destinationPath, $content);
+    }
+
+    protected function generateBuildReadme(): void
+    {
+        $destinationPath = base_path('.docker/build/README.md');
+
+        if ($this->files->exists($destinationPath) && !$this->option('force')) {
+            $this->warn("  ⚠ Skipped .docker/build/README.md (already exists, use --force to overwrite)");
+            return;
+        }
+
+        $builder = new ComposeBuilder($this->config, $this->selections);
+        $content = $builder->generateBuildReadme();
 
         $this->files->put($destinationPath, $content);
     }

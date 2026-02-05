@@ -431,4 +431,126 @@ class ComposeBuilder
     {
         return $this->selections[$environment]['database']['driver'] ?? 'mariadb';
     }
+
+    public function buildBuildCompose(): string
+    {
+        $registryUrl = $this->config['registry']['url'];
+        $backendImage = $this->config['registry']['backend_image'];
+        $frontendImage = $this->config['registry']['frontend_image'];
+
+        $services = [
+            'backend' => [
+                'build' => [
+                    'context' => '../..',
+                    'dockerfile' => '.docker/prod/backend/Dockerfile',
+                ],
+                'image' => "{$registryUrl}/{$backendImage}:latest",
+            ],
+            'frontend' => [
+                'build' => [
+                    'context' => '../..',
+                    'dockerfile' => '.docker/prod/frontend/Dockerfile',
+                ],
+                'image' => "{$registryUrl}/{$frontendImage}:latest",
+            ],
+        ];
+
+        $compose = ['services' => $services];
+
+        return Yaml::dump($compose, 10, 2);
+    }
+
+    public function generateBuildReadme(): string
+    {
+        $registryUrl = $this->config['registry']['url'];
+        $backendImage = $this->config['registry']['backend_image'];
+        $frontendImage = $this->config['registry']['frontend_image'];
+
+        return <<<README
+# Production Image Builder
+
+This directory contains the docker-compose configuration for building and pushing production images.
+
+## Prerequisites
+
+1. Authenticate with your container registry:
+   ```bash
+   # DigitalOcean
+   doctl registry login
+
+   # Docker Hub
+   docker login
+
+   # AWS ECR
+   aws ecr get-login-password | docker login --username AWS --password-stdin <account>.dkr.ecr.<region>.amazonaws.com
+
+   # Google Cloud
+   gcloud auth configure-docker
+   ```
+
+2. Ensure your `.docker/prod/.env.production` file is configured correctly.
+
+## Usage
+
+### Build images locally
+```bash
+cd .docker/build
+docker compose build
+```
+
+### Build and push to registry
+```bash
+cd .docker/build
+docker compose build && docker compose push
+```
+
+### Build with specific tag
+```bash
+cd .docker/build
+docker compose build
+docker tag {$registryUrl}/{$backendImage}:latest {$registryUrl}/{$backendImage}:v1.0.0
+docker tag {$registryUrl}/{$frontendImage}:latest {$registryUrl}/{$frontendImage}:v1.0.0
+docker push {$registryUrl}/{$backendImage}:v1.0.0
+docker push {$registryUrl}/{$frontendImage}:v1.0.0
+```
+
+## Images
+
+| Service  | Image                                      |
+|----------|-------------------------------------------|
+| Backend  | `{$registryUrl}/{$backendImage}:latest`  |
+| Frontend | `{$registryUrl}/{$frontendImage}:latest` |
+
+## Configuration
+
+Edit `config/docker-scaffold.php` to change:
+- `registry.url` - Container registry URL
+- `registry.backend_image` - Backend image name
+- `registry.frontend_image` - Frontend image name
+
+Then run `php artisan docker:init --force` to regenerate files.
+
+## CI/CD Integration
+
+Example GitHub Actions workflow:
+
+```yaml
+- name: Build and push images
+  run: |
+    cd .docker/build
+    docker compose build
+    docker compose push
+```
+
+Example GitLab CI:
+
+```yaml
+build:
+  script:
+    - cd .docker/build
+    - docker compose build
+    - docker compose push
+```
+README;
+    }
 }
