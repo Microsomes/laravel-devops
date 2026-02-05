@@ -1,0 +1,8 @@
+FROM node:{{NODE_VERSION}}-alpine
+WORKDIR /var/www
+
+COPY . / /var/www
+
+RUN npm install && npm run build
+
+ENV SKIP_WAYFINDER=1

@@ -1,0 +1,37 @@
+FROM node:{{NODE_VERSION}}-alpine AS node-builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . ./
+RUN npm run build
+
+FROM php:{{PHP_VERSION}}-fpm
+WORKDIR /var/www
+
+
+COPY --from=node-builder /app/public/build /var/www/public/build
+
+
+################################################################################
+##
+##      Install dependencies
+##
+RUN apt-get update \
+    && apt-get install -y sqlite3 mariadb-client libjpeg-dev libpng-dev libonig-dev libzip-dev unzip \
+        && docker-php-ext-install     bcmath pdo_mysql pcntl \
+        && docker-php-ext-configure   gd --with-jpeg  \
+        && docker-php-ext-install     gd  \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY . /var/www
+
+# Set correct permissions for Laravel writable directories
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+RUN composer install --no-dev --optimize-autoloader --working-dir=/var/www
+
+USER    33
+EXPOSE  9000
+CMD     ["php-fpm"]
