@@ -17,8 +17,8 @@ COPY --from=node-builder /app/public/build /var/www/public/build
 ##      Install dependencies
 ##
 RUN apt-get update \
-    && apt-get install -y sqlite3 mariadb-client libjpeg-dev libpng-dev libonig-dev libzip-dev unzip \
-        && docker-php-ext-install     bcmath pdo_mysql pcntl \
+    && apt-get install -y sqlite3 mariadb-client libjpeg-dev libpng-dev libonig-dev libzip-dev libicu-dev unzip \
+        && docker-php-ext-install     bcmath pdo_mysql pcntl intl zip \
         && docker-php-ext-configure   gd --with-jpeg  \
         && docker-php-ext-install     gd  \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
